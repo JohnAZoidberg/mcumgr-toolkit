@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["mcumgr-toolkit", "mcumgr-toolkit-python", "mcumgrctl"]
+members = ["mcumgr-toolkit", "mcumgr-toolkit-python", "mcumgr-toolkit-web", "mcumgrctl"]
 
 [workspace.package]
 version = "0.12.1"

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCUmgr Web</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --border: #0f3460;
+      --accent: #e94560;
+      --text: #eee;
+      --muted: #888;
+      --success: #4ecca3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    h1 { font-size: 1.6em; margin-bottom: 8px; }
+    h1 span { color: var(--accent); }
+    .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.9em; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    section h2 { font-size: 1.1em; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type="text"], input[type="number"], input[type="file"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    input[type="text"] { flex: 1; min-width: 150px; }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      margin-left: 8px;
+    }
+    .status.connected { background: var(--success); color: #111; }
+    .status.disconnected { background: var(--muted); color: #111; }
+    #log {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.85em;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      background: var(--success);
+      transition: width 0.15s;
+      width: 0%;
+    }
+    .progress-text { font-size: 0.8em; color: var(--muted); margin-top: 4px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+      margin-top: 8px;
+    }
+    th, td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.75em;
+      margin-right: 2px;
+    }
+    .badge.yes { background: var(--success); color: #111; }
+    .badge.no { background: var(--border); color: var(--muted); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1><span>MCUmgr</span> Web</h1>
+  <p class="subtitle">WebSerial interface for Zephyr MCUmgr devices</p>
+
+  <!-- Connection -->
+  <section>
+    <h2>Connection
+      <span id="conn-status" class="status disconnected">Disconnected</span>
+    </h2>
+    <div class="row">
+      <label>Baud rate:</label>
+      <input type="number" id="baud" value="115200" style="width:120px">
+      <button id="btn-connect">Connect</button>
+      <button id="btn-disconnect" class="secondary" disabled>Disconnect</button>
+    </div>
+  </section>
+
+  <!-- Echo -->
+  <section>
+    <h2>Echo</h2>
+    <div class="row">
+      <input type="text" id="echo-input" placeholder="Type a message..." value="Hello MCUmgr!">
+      <button id="btn-echo" disabled>Send</button>
+    </div>
+    <div id="echo-result" style="margin-top:8px; color:var(--muted); font-family:monospace;"></div>
+  </section>
+
+  <!-- Images -->
+  <section>
+    <h2>Image Slots</h2>
+    <button id="btn-image-list" disabled>Refresh</button>
+    <div id="image-table-container"></div>
+  </section>
+
+  <!-- Upload -->
+  <section>
+    <h2>Firmware Upload</h2>
+    <div class="row">
+      <input type="file" id="fw-file" accept=".bin,.img" disabled>
+      <button id="btn-upload" disabled>Upload</button>
+    </div>
+    <div class="progress-bar hidden" id="upload-progress">
+      <div class="fill" id="upload-fill"></div>
+    </div>
+    <div class="progress-text hidden" id="upload-text"></div>
+  </section>
+
+  <!-- Reset -->
+  <section>
+    <div class="row">
+      <button id="btn-reset" disabled>Reset Device</button>
+    </div>
+  </section>
+
+  <!-- Log -->
+  <section>
+    <h2>Log</h2>
+    <div id="log"></div>
+  </section>
+
+  <script type="module">
+    import init, { McuMgrWeb } from './pkg/mcumgr_toolkit_web.js';
+
+    let mgr = null;
+
+    const $ = id => document.getElementById(id);
+    const log = msg => {
+      const el = $('log');
+      el.textContent += msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    };
+
+    function setConnected(connected) {
+      const status = $('conn-status');
+      status.textContent = connected ? 'Connected' : 'Disconnected';
+      status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+      $('btn-connect').disabled = connected;
+      $('btn-disconnect').disabled = !connected;
+      $('btn-echo').disabled = !connected;
+      $('btn-image-list').disabled = !connected;
+      $('fw-file').disabled = !connected;
+      $('btn-upload').disabled = !connected;
+      $('btn-reset').disabled = !connected;
+    }
+
+    await init();
+    mgr = new McuMgrWeb();
+    log('WASM loaded. Ready to connect.');
+
+    if (!navigator.serial) {
+      log('ERROR: WebSerial API not available. Use Chrome/Edge.');
+    }
+
+    $('btn-connect').addEventListener('click', async () => {
+      try {
+        const baud = parseInt($('baud').value) || 115200;
+        log(`Connecting at ${baud} baud...`);
+        await mgr.connect(baud);
+        setConnected(true);
+        log('Connected.');
+      } catch (e) {
+        log('Connect error: ' + e);
+      }
+    });
+
+    $('btn-disconnect').addEventListener('click', async () => {
+      try {
+        await mgr.disconnect();
+        setConnected(false);
+        log('Disconnected.');
+        // Recreate instance since transport was consumed
+        mgr = new McuMgrWeb();
+      } catch (e) {
+        log('Disconnect error: ' + e);
+      }
+    });
+
+    $('btn-echo').addEventListener('click', async () => {
+      const msg = $('echo-input').value;
+      try {
+        log('Echo: ' + msg);
+        const reply = await mgr.echo(msg);
+        $('echo-result').textContent = 'Reply: ' + reply;
+        log('Echo reply: ' + reply);
+      } catch (e) {
+        log('Echo error: ' + e);
+      }
+    });
+
+    $('btn-image-list').addEventListener('click', async () => {
+      try {
+        log('Listing images...');
+        const json = await mgr.image_list();
+        const images = JSON.parse(json);
+        renderImageTable(images);
+        log('Found ' + images.length + ' image(s).');
+      } catch (e) {
+        log('Image list error: ' + e);
+      }
+    });
+
+    function renderImageTable(images) {
+      if (!images.length) {
+        $('image-table-container').innerHTML = '<p style="color:var(--muted);margin-top:8px">No images found.</p>';
+        return;
+      }
+      const badge = (val, label) =>
+        `<span class="badge ${val ? 'yes' : 'no'}">${label}</span>`;
+      let html = '<table><tr><th>Image</th><th>Slot</th><th>Version</th><th>Flags</th></tr>';
+      for (const img of images) {
+        html += `<tr>
+          <td>${img.image}</td>
+          <td>${img.slot}</td>
+          <td>${img.version}</td>
+          <td>
+            ${badge(img.active, 'active')}
+            ${badge(img.confirmed, 'confirmed')}
+            ${badge(img.pending, 'pending')}
+            ${badge(img.bootable, 'bootable')}
+            ${badge(img.permanent, 'permanent')}
+          </td>
+        </tr>`;
+      }
+      html += '</table>';
+      $('image-table-container').innerHTML = html;
+    }
+
+    $('btn-upload').addEventListener('click', async () => {
+      const file = $('fw-file').files[0];
+      if (!file) { log('No file selected.'); return; }
+      try {
+        const data = new Uint8Array(await file.arrayBuffer());
+        log(`Uploading ${file.name} (${data.length} bytes)...`);
+        $('upload-progress').classList.remove('hidden');
+        $('upload-text').classList.remove('hidden');
+        $('btn-upload').disabled = true;
+
+        await mgr.image_upload(data, undefined, (offset, total) => {
+          const pct = Math.round(offset / total * 100);
+          $('upload-fill').style.width = pct + '%';
+          $('upload-text').textContent = `${offset} / ${total} bytes (${pct}%)`;
+        });
+
+        log('Upload complete.');
+        $('upload-fill').style.width = '100%';
+        $('upload-text').textContent = 'Upload complete!';
+        $('btn-upload').disabled = false;
+      } catch (e) {
+        log('Upload error: ' + e);
+        $('btn-upload').disabled = false;
+      }
+    });
+
+    $('btn-reset').addEventListener('click', async () => {
+      try {
+        log('Resetting device...');
+        await mgr.reset();
+        log('Reset command sent.');
+      } catch (e) {
+        log('Reset error: ' + e);
+      }
+    });
+
+    // Allow Enter key for echo
+    $('echo-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') $('btn-echo').click();
+    });
+  </script>
+</body>
+</html>
