@@ -1,5 +1,6 @@
 pub mod echo;
 pub mod image;
+pub mod os_info;
 pub mod reset;
 
 use std::io::Cursor;

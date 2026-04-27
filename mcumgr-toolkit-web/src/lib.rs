@@ -65,6 +65,24 @@ impl McuMgrWeb {
             .map_err(Into::into)
     }
 
+    /// OS/Application info, returns JSON string.
+    pub async fn application_info(&mut self) -> Result<String, JsValue> {
+        let transport = self.transport.as_mut().ok_or("Not connected")?;
+        let info = commands::os_info::application_info(transport)
+            .await
+            .map_err(JsValue::from)?;
+        serde_json::to_string_pretty(&info).map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// Bootloader info, returns JSON string.
+    pub async fn bootloader_info(&mut self) -> Result<String, JsValue> {
+        let transport = self.transport.as_mut().ok_or("Not connected")?;
+        let info = commands::os_info::bootloader_info(transport)
+            .await
+            .map_err(JsValue::from)?;
+        serde_json::to_string_pretty(&info).map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
     /// Reset the device. `boot_mode` is optional: 0 = normal boot, 1 = bootloader recovery.
     pub async fn reset(&mut self, boot_mode: Option<u8>) -> Result<(), JsValue> {
         let transport = self.transport.as_mut().ok_or("Not connected")?;

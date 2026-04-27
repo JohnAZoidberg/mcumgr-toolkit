@@ -167,6 +167,16 @@
     <div class="progress-text hidden" id="upload-text"></div>
   </section>
 
+  <!-- OS Info -->
+  <section>
+    <h2>Device Info</h2>
+    <div class="row">
+      <button id="btn-app-info" disabled>OS / Application Info</button>
+      <button id="btn-boot-info" disabled>Bootloader Info</button>
+    </div>
+    <pre id="info-output" style="margin-top:8px; color:var(--muted); font-family:monospace; white-space:pre-wrap; font-size:0.85em;"></pre>
+  </section>
+
   <!-- Reset -->
   <section>
     <div class="row">
@@ -205,6 +215,8 @@
       $('btn-upload').disabled = !connected;
       $('btn-reset').disabled = !connected;
       $('btn-reset-bootloader').disabled = !connected;
+      $('btn-app-info').disabled = !connected;
+      $('btn-boot-info').disabled = !connected;
     }
 
     await init();
@@ -315,25 +327,83 @@
       }
     });
 
-    $('btn-reset').addEventListener('click', async () => {
+    function pad(label, width = 18) {
+      return (label + ':').padEnd(width + 1, ' ');
+    }
+
+    $('btn-app-info').addEventListener('click', async () => {
       try {
-        log('Resetting device...');
-        await mgr.reset(undefined);
+        log('Fetching OS/Application info...');
+        const info = JSON.parse(await mgr.application_info());
+        const lines = ['OS/Application Info:'];
+        const fields = [
+          ['Kernel name', info.kernel_name],
+          ['Node name', info.node_name],
+          ['Kernel release', info.kernel_release],
+          ['Kernel version', info.kernel_version],
+          ['Build time', info.build_time],
+          ['Machine', info.machine],
+          ['Processor', info.processor],
+          ['Hardware platform', info.hardware_platform],
+          ['Operating system', info.operating_system],
+        ];
+        for (const [k, v] of fields) {
+          if (v != null) lines.push('    ' + pad(k) + ' ' + v);
+        }
+        $('info-output').textContent = lines.join('\n');
+        log('OS info received.');
+      } catch (e) {
+        log('App info error: ' + e);
+      }
+    });
+
+    $('btn-boot-info').addEventListener('click', async () => {
+      try {
+        log('Fetching bootloader info...');
+        const info = JSON.parse(await mgr.bootloader_info());
+        const lines = ['Bootloader Info:'];
+        if (info.type === 'mcuboot') {
+          lines.push('    ' + pad('Name', 20) + ' ' + info.name);
+          const modeStr = info.mode_name
+            ? `${info.mode} (${info.mode_name})`
+            : `${info.mode}`;
+          lines.push('    ' + pad('Mode', 20) + ' ' + modeStr);
+          lines.push('    ' + pad('Downgrade Prevention', 20) + ' ' + info.no_downgrade);
+        } else {
+          lines.push('    ' + pad('Name', 20) + ' ' + info.name);
+        }
+        $('info-output').textContent = lines.join('\n');
+        log('Bootloader info received.');
+      } catch (e) {
+        log('Bootloader info error: ' + e);
+      }
+    });
+
+    async function resetAndDisconnect(bootMode, label) {
+      try {
+        log(label + '...');
+        await mgr.reset(bootMode);
         log('Reset command sent.');
       } catch (e) {
         log('Reset error: ' + e);
       }
-    });
-
-    $('btn-reset-bootloader').addEventListener('click', async () => {
       try {
-        log('Resetting into bootloader...');
-        await mgr.reset(1);
-        log('Reset command sent (bootmode=1).');
+        await mgr.disconnect();
       } catch (e) {
-        log('Reset error: ' + e);
+        // Device is rebooting; the port may already be gone
       }
-    });
+      setConnected(false);
+      mgr = new McuMgrWeb();
+      log('Disconnected.');
+    }
+
+    $('btn-reset').addEventListener('click', () =>
+      resetAndDisconnect(undefined, 'Resetting device')
+    );
+
+    $('btn-reset-bootloader').addEventListener('click', () =>
+      resetAndDisconnect(1, 'Resetting into bootloader')
+    );
 
     // Allow Enter key for echo
     $('echo-input').addEventListener('keydown', e => {
