@@ -65,9 +65,11 @@ impl McuMgrWeb {
             .map_err(Into::into)
     }
 
-    /// Reset the device.
-    pub async fn reset(&mut self) -> Result<(), JsValue> {
+    /// Reset the device. `boot_mode` is optional: 0 = normal boot, 1 = bootloader recovery.
+    pub async fn reset(&mut self, boot_mode: Option<u8>) -> Result<(), JsValue> {
         let transport = self.transport.as_mut().ok_or("Not connected")?;
-        commands::reset::reset(transport).await.map_err(Into::into)
+        commands::reset::reset(transport, boot_mode)
+            .await
+            .map_err(Into::into)
     }
 }

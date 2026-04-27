@@ -9,10 +9,16 @@ const GROUP_OS: u16 = 0;
 const CMD_RESET: u8 = 5;
 
 #[derive(Serialize)]
-struct SystemResetRequest {}
+struct SystemResetRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    boot_mode: Option<u8>,
+}
 
-pub async fn reset(transport: &mut WebSerialTransport) -> Result<(), TransportError> {
-    let payload = cbor_encode(&SystemResetRequest {}).map_err(TransportError::Js)?;
+pub async fn reset(
+    transport: &mut WebSerialTransport,
+    boot_mode: Option<u8>,
+) -> Result<(), TransportError> {
+    let payload = cbor_encode(&SystemResetRequest { boot_mode }).map_err(TransportError::Js)?;
 
     // Device may reset before responding, so a timeout/error here is expected
     match transport

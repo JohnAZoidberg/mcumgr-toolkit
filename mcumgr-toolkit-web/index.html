@@ -171,6 +171,7 @@
   <section>
     <div class="row">
       <button id="btn-reset" disabled>Reset Device</button>
+      <button id="btn-reset-bootloader" class="secondary" disabled>Reset to Bootloader</button>
     </div>
   </section>
 
@@ -203,6 +204,7 @@
       $('fw-file').disabled = !connected;
       $('btn-upload').disabled = !connected;
       $('btn-reset').disabled = !connected;
+      $('btn-reset-bootloader').disabled = !connected;
     }
 
     await init();
@@ -316,8 +318,18 @@
     $('btn-reset').addEventListener('click', async () => {
       try {
         log('Resetting device...');
-        await mgr.reset();
+        await mgr.reset(undefined);
         log('Reset command sent.');
+      } catch (e) {
+        log('Reset error: ' + e);
+      }
+    });
+
+    $('btn-reset-bootloader').addEventListener('click', async () => {
+      try {
+        log('Resetting into bootloader...');
+        await mgr.reset(1);
+        log('Reset command sent (bootmode=1).');
       } catch (e) {
         log('Reset error: ' + e);
       }
